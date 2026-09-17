@@ -162,6 +162,17 @@ test("workspace uses a fixed viewport", async ({ page }) => {
   expect(overflow.body).toBeLessThanOrEqual(overflow.inner + 2);
 });
 
+test("sequence viewer inserts a spacer every ten residues", async ({ page }) => {
+  await loadTestProtein(page);
+  const first = await page.locator('[data-canonical="1"]').boundingBox();
+  const tenth = await page.locator('[data-canonical="10"]').boundingBox();
+  const eleventh = await page.locator('[data-canonical="11"]').boundingBox();
+  expect(first && tenth && eleventh).toBeTruthy();
+  if (!first || !tenth || !eleventh) return;
+  expect(tenth.x - first.x).toBe(9 * 14);
+  expect(eleventh.x - (tenth.x + tenth.width)).toBeGreaterThanOrEqual(5);
+});
+
 test("keyboard delete then undo restores the construct", async ({ page }) => {
   await loadTestProtein(page);
   await page.getByRole("button", { name: "Go to residue" }).click();
@@ -246,4 +257,25 @@ test("history menu lists the saved design", async ({ page }) => {
     .toMatch(/P00000/);
   await page.getByRole("button", { name: "History" }).click();
   await expect(page.getByRole("button", { name: /TEST · Full length/ })).toBeVisible();
+});
+
+test("brand returns to the start page and warns when edits exist", async ({ page }) => {
+  await loadTestProtein(page);
+  await page.getByRole("button", { name: "coreFold" }).click();
+  await expect(
+    page.getByLabel("Canonical UniProt accession, UniProt entry name, or gene symbol"),
+  ).toBeVisible();
+
+  await loadTestProtein(page);
+  await page.getByRole("button", { name: "Accept" }).click();
+  await page.getByRole("button", { name: "coreFold" }).click();
+  await expect(page.getByText("Return to the start page?")).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("Estimated throughput gain")).toBeVisible();
+  await page.getByRole("button", { name: "coreFold" }).click();
+  await page.getByRole("button", { name: "Return" }).click();
+  await expect(
+    page.getByLabel("Canonical UniProt accession, UniProt entry name, or gene symbol"),
+  ).toBeVisible();
+  await expect(page.getByText("Estimated throughput gain")).toHaveCount(0);
 });

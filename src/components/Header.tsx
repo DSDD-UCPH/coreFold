@@ -1,10 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import {
-  ALGORITHM_VERSION,
-  currentShareUrl,
-  exportBundle,
-  useWorkspaceStore,
-} from "../state/workspaceStore";
+import { currentShareUrl, exportBundle, useWorkspaceStore } from "../state/workspaceStore";
 import {
   clearDesignHistory,
   deleteDesign,
@@ -20,6 +15,7 @@ import { Popover } from "./Popover";
 import { AdvancedSettings } from "./AdvancedSettings";
 import { CofoldingExportMenu } from "./CofoldingExportMenu";
 import { GreenFoldA3mExport } from "./GreenFoldA3mExport";
+import { Brand } from "./Brand";
 
 export function Header({
   inspectorOpen,
@@ -50,14 +46,11 @@ export function Header({
 
   const title = ready
     ? `${ready.protein.gene ?? ready.protein.entryName} / ${ready.protein.accession}`
-    : "Protein Minifier";
+    : "";
 
   return (
     <header className="topbar">
-      <div className="brand">
-        <strong>Protein Minifier</strong>
-        <span className="muted">{ALGORITHM_VERSION}</span>
-      </div>
+      <Brand />
       {ready && (
         <div className="identity-inline">
           <strong>{title}</strong>
@@ -295,10 +288,7 @@ function ExportMenu() {
         type="button"
         className="ghost"
         onClick={() =>
-          void copyWithFeedback(
-            "share",
-            currentShareUrl(window.location.origin, derived.greenfold),
-          )
+          void copyWithFeedback("share", currentShareUrl(window.location.origin, derived.greenfold))
         }
       >
         {copied === "share" ? "Copied share link" : "Copy share link"}

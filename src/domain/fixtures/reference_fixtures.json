@@ -1,0 +1,17 @@
+{
+  "throughput": [
+    { "original": 1024, "minified": 512, "gain": 3.4482758620689653 },
+    { "original": 812, "minified": 604, "gain": 1.6897865646642019 },
+    { "original": 4000, "minified": 2000, "gain": 5.000046175699603 },
+    { "original": 5000, "minified": 3000, "gain": 3.456355756674062 }
+  ],
+  "linker": [
+    { "distance": 18.6, "minimum": 5, "recommended": 7, "sequence": "GGGGGGG" },
+    { "distance": 0, "minimum": 0, "recommended": 0, "sequence": "" }
+  ],
+  "benefit": [
+    { "deleted": 30, "linker": 14, "recommended": true },
+    { "deleted": 30, "linker": 15, "recommended": false },
+    { "deleted": 30, "linker": 16, "recommended": false }
+  ]
+}
