@@ -516,7 +516,22 @@ export const useWorkspaceStore = create<Store>((set, get) => ({
       set({ workspace: { ...workspace, selection: undefined } });
       return;
     }
-    const scoped = clampIntervalToConstruct(selection, workspace.construct);
+    const ordered = {
+      start: Math.min(selection.start, selection.end),
+      end: Math.max(selection.start, selection.end),
+    };
+    const inProtein = {
+      start: Math.max(1, ordered.start),
+      end: Math.min(workspace.protein.length, ordered.end),
+    };
+    if (inProtein.start > inProtein.end) {
+      set({ workspace: { ...workspace, selection: undefined } });
+      return;
+    }
+    const highlightOnly = selection.source === "focus" || selection.source === "candidate_panel";
+    const scoped = highlightOnly
+      ? inProtein
+      : clampIntervalToConstruct(inProtein, workspace.construct);
     set({
       workspace: {
         ...workspace,

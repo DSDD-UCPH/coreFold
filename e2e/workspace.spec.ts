@@ -279,3 +279,18 @@ test("brand returns to the start page and warns when edits exist", async ({ page
   ).toBeVisible();
   await expect(page.getByText("Estimated throughput gain")).toHaveCount(0);
 });
+
+test("hamburger toggles the proposal inspector", async ({ page }) => {
+  await loadTestProtein(page);
+  await expect(page.getByRole("heading", { name: "Automatic proposal" })).toBeVisible();
+  await page.getByRole("button", { name: "Toggle proposal panel" }).click();
+  await expect(page.getByRole("heading", { name: "Automatic proposal" })).toBeHidden();
+  await page.getByRole("button", { name: "Toggle proposal panel" }).click();
+  await expect(page.getByRole("heading", { name: "Automatic proposal" })).toBeVisible();
+});
+
+test("highlight frames the focused candidate on the sequence", async ({ page }) => {
+  await loadTestProtein(page);
+  await page.getByRole("button", { name: "Highlight" }).first().click();
+  await expect(page.locator(".seq-marker.selection, .seq-marker.hover").first()).toBeVisible();
+});

@@ -23,7 +23,9 @@ export function StructureViewer() {
     pendingAction?.type === "construct"
       ? `${pendingAction.construct.start}-${pendingAction.construct.end}`
       : "";
-  const constructKey = ready ? `${ready.construct.start}-${ready.construct.end}:${pendingConstruct}` : "";
+  const constructKey = ready
+    ? `${ready.construct.start}-${ready.construct.end}:${pendingConstruct}`
+    : "";
   const editKey =
     ready?.edits
       .map((edit) => {
@@ -123,7 +125,12 @@ export function StructureViewer() {
         await highlightResidues(plugin, current.selection.start, current.selection.end);
       }
       if (shouldFit) {
-        await focusCaRange(plugin, current.structure.ca, current.construct.start, current.construct.end);
+        await focusCaRange(
+          plugin,
+          current.structure.ca,
+          current.construct.start,
+          current.construct.end,
+        );
       }
     })();
   }, [minifiedSequence, constructKey, editKey, previewKey]);
@@ -145,7 +152,9 @@ export function StructureViewer() {
         cameraLinger.current = target;
         const aim = () => {
           lastCameraAt.current = performance.now();
-          void focusCaRange(plugin, current.structure.ca, target.start, target.end, 140);
+          void focusCaRange(plugin, current.structure.ca, target.start, target.end, {
+            durationMs: 140,
+          });
         };
         if (performance.now() - lastCameraAt.current > 160) {
           aim();
@@ -161,7 +170,9 @@ export function StructureViewer() {
     }
     const aimed = cameraLinger.current ?? lingerRange.current;
     if (aimed) {
-      void focusCaRange(plugin, current.structure.ca, aimed.start, aimed.end, 250);
+      void focusCaRange(plugin, current.structure.ca, aimed.start, aimed.end, {
+        durationMs: 250,
+      });
     }
     dragHighlightTimer.current = window.setTimeout(() => {
       lingerRange.current = null;
@@ -176,13 +187,34 @@ export function StructureViewer() {
   }, [previewKey, dragPreview]);
 
   useEffect(() => {
-    if (!pluginRef.current || selSource !== "focus" || selStart === undefined || selEnd === undefined) {
+    const plugin = pluginRef.current;
+    if (!plugin || selStart === undefined || selEnd === undefined) return;
+    if (selSource !== "focus" && selSource !== "sequence" && selSource !== "candidate_panel") {
       return;
     }
+    if (dragPreview?.edit || dragPreview?.construct) return;
     const current = useWorkspaceStore.getState().workspace;
     if (current.status !== "ready") return;
-    void focusCaRange(pluginRef.current, current.structure.ca, selStart, selEnd);
-  }, [selSource, selStart, selEnd, selAt]);
+    const tight = selSource === "focus";
+    const range = tight
+      ? { start: selStart, end: selEnd }
+      : selectionCameraWindow(selStart, selEnd, current.protein.length);
+    const aim = () => {
+      lastCameraAt.current = performance.now();
+      void focusCaRange(plugin, current.structure.ca, range.start, range.end, {
+        durationMs: tight ? 250 : 160,
+        extraRadius: tight ? 4 : 12,
+        minRadius: tight ? 10 : 20,
+      });
+    };
+    if (tight || performance.now() - lastCameraAt.current > 160) {
+      aim();
+      return undefined;
+    }
+    window.clearTimeout(cameraTimer.current);
+    cameraTimer.current = window.setTimeout(aim, 160);
+    return () => window.clearTimeout(cameraTimer.current);
+  }, [selSource, selStart, selEnd, selAt, dragPreview]);
 
   useEffect(() => {
     const plugin = pluginRef.current;
@@ -199,12 +231,12 @@ export function StructureViewer() {
     const plugin = pluginRef.current;
     if (!plugin) return;
     const current = useWorkspaceStore.getState().workspace;
-    const visible =
+    const inProtein =
       hoverRange &&
       current.status === "ready" &&
-      hoverRange.end >= current.construct.start &&
-      hoverRange.start <= current.construct.end;
-    if (!visible) {
+      hoverRange.end >= 1 &&
+      hoverRange.start <= current.protein.length;
+    if (!inProtein) {
       plugin.managers.interactivity.lociHighlights.clearHighlights();
       return;
     }
@@ -256,9 +288,8 @@ async function createViewer(host: HTMLDivElement): Promise<PluginContext> {
   const { PluginBehaviors } = await import("molstar/lib/mol-plugin/behavior");
   const { PluginConfig } = await import("molstar/lib/mol-plugin/config");
   const { Color } = await import("molstar/lib/mol-util/color");
-  const { MAQualityAssessment } = await import(
-    "molstar/lib/extensions/model-archive/quality-assessment/behavior"
-  );
+  const { MAQualityAssessment } =
+    await import("molstar/lib/extensions/model-archive/quality-assessment/behavior");
   structureApi = await import("molstar/lib/mol-model/structure");
 
   const spec = DefaultPluginSpec();
@@ -352,12 +383,10 @@ async function loadStructure(plugin: PluginContext, workspace: ReadyState) {
 async function styleRemoved(plugin: PluginContext, workspace: ReadyState) {
   const components = plugin.managers.structure.hierarchy.currentComponentGroups.flat();
   if (components.length === 0) return;
-  const { setStructureOverpaint, clearStructureOverpaint } = await import(
-    "molstar/lib/mol-plugin-state/helpers/structure-overpaint"
-  );
-  const { setStructureTransparency, clearStructureTransparency } = await import(
-    "molstar/lib/mol-plugin-state/helpers/structure-transparency"
-  );
+  const { setStructureOverpaint, clearStructureOverpaint } =
+    await import("molstar/lib/mol-plugin-state/helpers/structure-overpaint");
+  const { setStructureTransparency, clearStructureTransparency } =
+    await import("molstar/lib/mol-plugin-state/helpers/structure-transparency");
   await clearStructureOverpaint(plugin, components);
   await clearStructureTransparency(plugin, components);
   const { Color } = await import("molstar/lib/mol-util/color");
@@ -412,7 +441,14 @@ async function residueTest(test: (Q: never, MS: never) => unknown) {
 
 async function outsideConstructLociGetter(start: number, end: number) {
   return residueTest((Q, MS) =>
-    (Q as { core: { logic: { not: (xs: unknown[]) => unknown }; rel: { inRange: (xs: unknown[]) => unknown } } }).core.logic.not([
+    (
+      Q as {
+        core: {
+          logic: { not: (xs: unknown[]) => unknown };
+          rel: { inRange: (xs: unknown[]) => unknown };
+        };
+      }
+    ).core.logic.not([
       (Q as { core: { rel: { inRange: (xs: unknown[]) => unknown } } }).core.rel.inRange([
         (MS as { ammp: (name: string) => unknown }).ammp("label_seq_id"),
         start,
@@ -425,7 +461,10 @@ async function outsideConstructLociGetter(start: number, end: number) {
 async function residueRangesLociGetter(ranges: Array<{ start: number; end: number }>) {
   return residueTest((Q, MS) => {
     const q = Q as {
-      core: { rel: { inRange: (xs: unknown[]) => unknown }; logic: { or: (xs: unknown[]) => unknown } };
+      core: {
+        rel: { inRange: (xs: unknown[]) => unknown };
+        logic: { or: (xs: unknown[]) => unknown };
+      };
     };
     const ms = MS as { ammp: (name: string) => unknown };
     const tests = ranges.map((range) =>
@@ -489,12 +528,33 @@ async function hoverResidues(plugin: PluginContext, start: number, end: number) 
   plugin.managers.interactivity.lociHighlights.highlightOnly({ loci });
 }
 
+function selectionCameraWindow(
+  start: number,
+  end: number,
+  proteinLength: number,
+): { start: number; end: number } {
+  const minSpan = 48;
+  const edgePad = 20;
+  let from = start - edgePad;
+  let to = end + edgePad;
+  const span = to - from + 1;
+  if (span < minSpan) {
+    const extra = Math.ceil((minSpan - span) / 2);
+    from -= extra;
+    to += extra;
+  }
+  return {
+    start: Math.max(1, from),
+    end: Math.min(proteinLength, to),
+  };
+}
+
 async function focusCaRange(
   plugin: PluginContext,
   ca: ReadyState["structure"]["ca"],
   start: number,
   end: number,
-  durationMs = 250,
+  options: { durationMs?: number; extraRadius?: number; minRadius?: number } = {},
 ) {
   const points: Array<{ x: number; y: number; z: number }> = [];
   for (let i = start; i <= end; i += 1) {
@@ -522,10 +582,11 @@ async function focusCaRange(
       return Math.sqrt(dx * dx + dy * dy + dz * dz);
     })
     .sort((a, b) => a - b);
-  const radius = distances[Math.min(distances.length - 1, Math.floor(distances.length * 0.85))] || 4;
+  const radius =
+    distances[Math.min(distances.length - 1, Math.floor(distances.length * 0.85))] || 4;
   plugin.managers.camera.focusSphere(Sphere3D.create(center, radius), {
-    extraRadius: 4,
-    minRadius: 10,
-    durationMs,
+    extraRadius: options.extraRadius ?? 4,
+    minRadius: options.minRadius ?? 10,
+    durationMs: options.durationMs ?? 250,
   });
 }

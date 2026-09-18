@@ -6,7 +6,6 @@ import { FEATURE_TYPE_LABEL, type UniProtFeature } from "../domain/types";
 import { useInteractionStore } from "../state/interactionStore";
 import { useWorkspaceStore, type ReadyState } from "../state/workspaceStore";
 import { plddtColor } from "./utils";
-import { PlddtLegend } from "./PlddtLegend";
 import { Popover } from "./Popover";
 
 const CELL = 14;
@@ -399,7 +398,6 @@ export function SequenceViewer() {
       <div className="seq-head">
         <h2>Sequence</h2>
         <span className="muted">Drag residues to select · drag caps to resize</span>
-        <PlddtLegend />
         <div className="menu-wrap">
           <button type="button" className="ghost" onClick={() => setGoTo((open) => !open)}>
             Go to residue
@@ -452,6 +450,30 @@ export function SequenceViewer() {
         className="seq-wrap"
         onPointerMove={(event) => {
           if (dragRef.current) return;
+          const target = event.target;
+          if (target instanceof Element) {
+            const track = target.closest(".seq-track");
+            if (track instanceof HTMLElement && !target.closest(".seq-cells")) {
+              const hit = trackMarkAt(track, event.clientX);
+              if (hit) {
+                setHover({ x: event.clientX, y: event.clientY, text: hit.text });
+                setHoverRange(
+                  hit.start !== undefined && hit.end !== undefined
+                    ? { start: hit.start, end: hit.end }
+                    : undefined,
+                );
+              } else {
+                setHover(null);
+                setHoverRange(undefined);
+              }
+              return;
+            }
+            if (!target.closest(".seq-cells")) {
+              setHover(null);
+              setHoverRange(undefined);
+              return;
+            }
+          }
           const pos = residueAtPoint(event.clientX, event.clientY);
           if (pos === undefined) {
             setHover(null);
@@ -460,14 +482,10 @@ export function SequenceViewer() {
           }
           const aa = ready.protein.sequence[pos - 1];
           const confidence = ready.structure.plddt[pos - 1];
-          const annotations = features
-            .filter((feature) => pos >= feature.start && pos <= feature.end)
-            .map((feature) => feature.description ?? feature.type)
-            .join(", ");
           setHover({
             x: event.clientX,
             y: event.clientY,
-            text: `${pos} ${aa}  pLDDT ${confidence.toFixed(1)}${annotations ? `  ${annotations}` : ""}`,
+            text: `${pos} ${aa}  pLDDT ${confidence.toFixed(1)}`,
           });
           if (pos < viewConstruct.start || pos > viewConstruct.end) {
             setHoverRange(undefined);
@@ -508,11 +526,8 @@ export function SequenceViewer() {
           );
         })}
       </div>
-      {selection && (
-        <div
-          className="seq-action-bar"
-          onPointerDown={(event) => event.stopPropagation()}
-        >
+      {selection && (selection.source === "sequence" || selection.source === "structure") && (
+        <div className="seq-action-bar" onPointerDown={(event) => event.stopPropagation()}>
           <span>
             Selected {selection.start}–{selection.end} ({selection.end - selection.start + 1} aa)
           </span>
@@ -528,7 +543,9 @@ export function SequenceViewer() {
             Linker
             <input
               value={linker}
-              onChange={(event) => setLinker(event.target.value.toUpperCase().replace(/[^GS]/g, ""))}
+              onChange={(event) =>
+                setLinker(event.target.value.toUpperCase().replace(/[^GS]/g, ""))
+              }
               placeholder="GS only"
               aria-label="Custom linker or insertion sequence, G and S only"
             />
@@ -606,22 +623,6 @@ const SeqRow = memo(function SeqRow({
     <div className="seq-line">
       <span className="seq-index">{rowStart}</span>
       <div className="seq-col" style={{ width: rowPixelWidth(rowStart, rowEnd) }}>
-        <div className="seq-track plddt">
-          {cells.map((cell) => (
-            <span
-              key={`p-${cell.key}`}
-              className="seq-feature"
-              style={{
-                left: xOffset(cell.canonical, rowStart),
-                width: CELL,
-                background: plddtColor(cell.plddt),
-                opacity: 1,
-                top: 0,
-                height: 4,
-              }}
-            />
-          ))}
-        </div>
         <FeatureTrack
           rowStart={rowStart}
           rowEnd={rowEnd}
@@ -646,14 +647,14 @@ const SeqRow = memo(function SeqRow({
           />
         </div>
         <div className="seq-cells">
+          <RangeMarker kind="hover" rowStart={rowStart} rowEnd={rowEnd} range={hover} />
+          <RangeMarker kind="selection" rowStart={rowStart} rowEnd={rowEnd} range={selection} />
           {cells.map((cell) => {
             const faded = residueFaded(cell.canonical, construct, edits);
             const selected =
               selection !== undefined &&
               cell.canonical >= selection.start &&
               cell.canonical <= selection.end;
-            const hovered =
-              hover !== undefined && cell.canonical >= hover.start && cell.canonical <= hover.end;
             return (
               <div
                 key={cell.key}
@@ -663,7 +664,6 @@ const SeqRow = memo(function SeqRow({
                   "seq-cell",
                   faded ? "faded" : "",
                   selected ? "selected" : "",
-                  hovered ? "hovered" : "",
                   hasBlockGap(cell.canonical, rowEnd) ? "seq-block-gap" : "",
                 ].join(" ")}
                 style={{ background: plddtColor(cell.plddt) }}
@@ -680,6 +680,29 @@ const SeqRow = memo(function SeqRow({
     </div>
   );
 });
+
+function RangeMarker({
+  kind,
+  rowStart,
+  rowEnd,
+  range,
+}: {
+  kind: "selection" | "hover";
+  rowStart: number;
+  rowEnd: number;
+  range?: { start: number; end: number };
+}) {
+  if (!range) return null;
+  const box = overlapBox(rowStart, rowEnd, range.start, range.end);
+  if (!box) return null;
+  const className = [
+    "seq-marker",
+    kind,
+    inRow(rowStart, rowEnd, range.start) ? "opens" : "",
+    inRow(rowStart, rowEnd, range.end) ? "closes" : "",
+  ].join(" ");
+  return <span className={className} style={{ left: box.left, width: box.width }} />;
+}
 
 function FeatureTrack({
   rowStart,
@@ -699,11 +722,15 @@ function FeatureTrack({
       {shown.map((feature) => {
         const box = overlapBox(rowStart, rowEnd, feature.start, feature.end);
         if (!box) return null;
+        const label = `${feature.description?.trim() || FEATURE_TYPE_LABEL[feature.type]} ${feature.start}–${feature.end}`;
         return (
           <span
             key={feature.id}
             className={`seq-feature ${feature.type}`}
-            title={`${feature.description?.trim() || FEATURE_TYPE_LABEL[feature.type]} ${feature.start}–${feature.end}`}
+            data-tooltip={label}
+            data-start={feature.start}
+            data-end={feature.end}
+            data-hover=""
             style={{ left: box.left, width: box.width }}
           />
         );
@@ -739,6 +766,9 @@ function SeqRail({
       {constructBox && (
         <span
           className="seq-span construct"
+          data-tooltip={`Construct ${construct.start}–${construct.end}`}
+          data-start={construct.start}
+          data-end={construct.end}
           style={{ left: constructBox.left, width: constructBox.width }}
         />
       )}
@@ -747,7 +777,12 @@ function SeqRail({
           if (edit.start - 1 < rowStart || edit.start - 1 > rowEnd) return null;
           const left = xOffset(edit.start - 1, rowStart) + CELL - 5;
           return (
-            <span key={edit.id} className="seq-insert-mark" style={{ left }} title={edit.insertion}>
+            <span
+              key={edit.id}
+              className="seq-insert-mark"
+              style={{ left }}
+              data-tooltip={edit.insertion ? `Insertion ${edit.insertion}` : "Insertion"}
+            >
               {edit.insertion ? `+${edit.insertion[0]}${edit.insertion.length}` : "+"}
             </span>
           );
@@ -758,6 +793,10 @@ function SeqRail({
           <span
             key={edit.id}
             className={`seq-span edit ${edit.status}`}
+            data-tooltip={`Deletion ${edit.start}–${edit.end}`}
+            data-start={edit.start}
+            data-end={edit.end}
+            data-hover=""
             style={{ left: box.left, width: box.width }}
           />
         );
@@ -1026,6 +1065,30 @@ function scrollWithin(wrap: HTMLElement, node: HTMLElement) {
   const nodeRect = node.getBoundingClientRect();
   if (nodeRect.top >= wrapRect.top && nodeRect.bottom <= wrapRect.bottom) return;
   wrap.scrollTop += nodeRect.top - wrapRect.top - wrap.clientHeight / 2 + nodeRect.height / 2;
+}
+
+function trackMarkAt(
+  track: HTMLElement,
+  clientX: number,
+): { text: string; start?: number; end?: number } | undefined {
+  const marks = track.querySelectorAll(".seq-feature, .seq-span, .seq-insert-mark");
+  let hit: HTMLElement | undefined;
+  for (const mark of marks) {
+    if (!(mark instanceof HTMLElement)) continue;
+    const box = mark.getBoundingClientRect();
+    if (clientX >= box.left && clientX <= box.right) hit = mark;
+  }
+  if (!hit) return undefined;
+  const text = hit.dataset.tooltip;
+  if (!text) return undefined;
+  const hoverRange = hit.dataset.hover !== undefined;
+  const start = Number(hit.dataset.start);
+  const end = Number(hit.dataset.end);
+  return {
+    text,
+    start: hoverRange && Number.isFinite(start) ? start : undefined,
+    end: hoverRange && Number.isFinite(end) ? end : undefined,
+  };
 }
 
 function residueAtPoint(clientX: number, clientY: number): number | undefined {

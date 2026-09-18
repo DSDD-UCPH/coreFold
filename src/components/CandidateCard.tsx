@@ -70,7 +70,8 @@ export function CandidateCard({ candidate }: { candidate: Candidate }) {
         </p>
         <h3>{classLabel(display.class)} low-confidence region</h3>
         <p className="card-meta">
-          {live.start}–{live.end} · {live.end - live.start + 1} aa · pLDDT {display.meanPlddt.toFixed(1)}
+          {live.start}–{live.end} · {live.end - live.start + 1} aa · pLDDT{" "}
+          {display.meanPlddt.toFixed(1)}
         </p>
         {adjusted && (
           <p className="adjust-note">
@@ -165,6 +166,7 @@ export function CandidateCard({ candidate }: { candidate: Candidate }) {
             onClick={(event) => {
               event.stopPropagation();
               selectCandidate(candidate.id);
+              setHoverRange({ start: live.start, end: live.end });
               setSelection({
                 start: live.start,
                 end: live.end,
@@ -179,8 +181,8 @@ export function CandidateCard({ candidate }: { candidate: Candidate }) {
         {linkerEdit?.type === "replacement" &&
           linkerEdit.status === "applied" &&
           (linkerEdit.candidateId === candidate.id || !linkerEdit.candidateId) && (
-          <LinkerEditor edit={linkerEdit} deletedLength={live.end - live.start + 1} />
-        )}
+            <LinkerEditor edit={linkerEdit} deletedLength={live.end - live.start + 1} />
+          )}
       </article>
     </li>
   );

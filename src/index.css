@@ -16,6 +16,9 @@
   --construct: #2563eb;
   --edit: #d97706;
   --edit-pending: #b45309;
+  --seq-construct: #3f4b5b;
+  --seq-edit: #c026d3;
+  --seq-edit-pending: #86198f;
   --insert: #d1fae5;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
   --radius: 6px;
@@ -162,6 +165,8 @@ button:focus-visible {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
   min-height: 52px;
+  position: relative;
+  z-index: 4;
 }
 
 .brand-home {
@@ -304,6 +309,13 @@ button.brand-home:hover:not(:disabled) {
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   position: relative;
+}
+.body-upper:not(:has(.inspector.open)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.body-upper:not(:has(.inspector.open)) > .inspector,
+.body-upper:not(:has(.inspector.open)) > .v-split {
+  display: none;
 }
 .body-upper > :first-child {
   grid-column: 1;
@@ -482,20 +494,20 @@ button.brand-home:hover:not(:disabled) {
   position: absolute;
   top: 0;
   bottom: 0;
-  background: color-mix(in srgb, var(--construct) 18%, transparent);
-  border-left: 2px solid var(--construct);
-  border-right: 2px solid var(--construct);
+  background: color-mix(in srgb, var(--seq-construct) 18%, transparent);
+  border-left: 2px solid var(--seq-construct);
+  border-right: 2px solid var(--seq-construct);
 }
 .seq-minimap-edit {
   position: absolute;
   top: 6px;
   height: 16px;
   border-radius: 2px;
-  background: var(--edit);
+  background: var(--seq-edit);
   opacity: 0.85;
 }
 .seq-minimap-edit.pending {
-  background: var(--edit-pending);
+  background: var(--seq-edit-pending);
   opacity: 0.7;
 }
 .seq-minimap-candidate {
@@ -522,14 +534,14 @@ button.brand-home:hover:not(:disabled) {
   display: grid;
   grid-template-columns: 3rem minmax(0, 1fr);
   gap: 0.4rem;
-  margin: 0 0 6px;
+  margin: 0 0 2px;
 }
 .seq-index {
   color: var(--muted);
   font-size: 11px;
   line-height: 18px;
   text-align: right;
-  padding-top: 28px;
+  padding-top: 23px;
 }
 .seq-col {
   min-width: 0;
@@ -539,15 +551,13 @@ button.brand-home:hover:not(:disabled) {
   position: relative;
   display: flex;
   flex-wrap: nowrap;
+  padding-bottom: 4px;
 }
 
 .seq-track {
   position: relative;
   height: 6px;
   margin: 0 0 1px;
-}
-.seq-track.plddt {
-  height: 4px;
 }
 .seq-track.edits {
   height: 12px;
@@ -557,6 +567,10 @@ button.brand-home:hover:not(:disabled) {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+.seq-span,
+.seq-insert-mark {
+  pointer-events: auto;
 }
 .seq-feature {
   position: absolute;
@@ -600,17 +614,17 @@ button.brand-home:hover:not(:disabled) {
   border-radius: 3px;
 }
 .seq-span.construct {
-  background: var(--construct);
-  opacity: 0.4;
+  background: var(--seq-construct);
+  opacity: 0.45;
   cursor: col-resize;
 }
 .seq-span.edit {
-  background: var(--edit);
+  background: var(--seq-edit);
   opacity: 0.9;
   cursor: col-resize;
 }
 .seq-span.edit.pending {
-  background: var(--edit-pending);
+  background: var(--seq-edit-pending);
   opacity: 0.75;
 }
 
@@ -643,10 +657,10 @@ button.brand-home:hover:not(:disabled) {
   right: 0;
 }
 .seq-grip.construct::after {
-  background: var(--construct);
+  background: var(--seq-construct);
 }
 .seq-grip.edit::after {
-  background: var(--edit);
+  background: var(--seq-edit);
 }
 .seq-grip:hover::after,
 .seq-grip:focus-visible::after {
@@ -693,13 +707,46 @@ button.brand-home:hover:not(:disabled) {
 .seq-cell.faded {
   opacity: 0.3;
 }
-.seq-cell.hovered {
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--selection) 55%, white);
+.seq-cell.selected {
+  font-weight: 700;
+}
+
+.seq-marker {
+  position: absolute;
+  pointer-events: none;
+}
+.seq-marker.hover,
+.seq-marker.selection {
+  top: 0;
+  bottom: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+.seq-marker.hover {
+  border: 2px dashed color-mix(in srgb, var(--selection) 75%, white);
+  background: color-mix(in srgb, var(--selection) 14%, transparent);
   z-index: 1;
 }
-.seq-cell.selected {
-  box-shadow: inset 0 0 0 2px var(--selection);
+.seq-marker.selection {
+  border: 2px solid var(--selection);
   z-index: 2;
+}
+.seq-marker.hover:not(.opens),
+.seq-marker.selection:not(.opens) {
+  border-left: 0;
+}
+.seq-marker.hover:not(.closes),
+.seq-marker.selection:not(.closes) {
+  border-right: 0;
+}
+.seq-marker.hover.opens,
+.seq-marker.selection.opens {
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+}
+.seq-marker.hover.closes,
+.seq-marker.selection.closes {
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
 }
 
 .seq-action-bar {
@@ -952,9 +999,6 @@ button.brand-home:hover:not(:disabled) {
 .seq-head {
   flex-wrap: wrap;
 }
-.seq-head .plddt-legend {
-  margin-left: auto;
-}
 
 .plddt-legend {
   display: flex;
@@ -1186,6 +1230,9 @@ button.brand-home:hover:not(:disabled) {
   }
   .body-upper > .v-split {
     display: none;
+  }
+  .body-upper:not(:has(.inspector.open)) > .inspector {
+    display: flex;
   }
   .body-upper:has(.inspector.open) > :first-child {
     margin-right: min(100%, var(--inspector-width, 380px));

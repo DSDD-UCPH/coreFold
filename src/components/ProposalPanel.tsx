@@ -96,16 +96,19 @@ function UserEditList() {
                 <button
                   type="button"
                   className="ghost"
-                  onMouseEnter={() => setHoverRange({ start: Math.min(start, end), end: Math.max(start, end) })}
+                  onMouseEnter={() =>
+                    setHoverRange({ start: Math.min(start, end), end: Math.max(start, end) })
+                  }
                   onMouseLeave={() => setHoverRange(undefined)}
-                  onClick={() =>
+                  onClick={() => {
+                    const range = { start: Math.min(start, end), end: Math.max(start, end) };
+                    setHoverRange(range);
                     setSelection({
-                      start: Math.min(start, end),
-                      end: Math.max(start, end),
+                      ...range,
                       source: "focus",
                       at: Date.now(),
-                    })
-                  }
+                    });
+                  }}
                 >
                   Highlight
                 </button>
