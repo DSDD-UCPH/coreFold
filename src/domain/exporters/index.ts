@@ -9,6 +9,7 @@ export {
   exportHelixFoldJson,
   exportOpenFold2Fasta,
   exportOpenFold3Json,
+  exportOpenDdeJson,
   exportProtenixJson,
 } from "./cofolding";
 export type { CofoldingExport } from "./cofolding";

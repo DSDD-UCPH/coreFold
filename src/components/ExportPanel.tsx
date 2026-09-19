@@ -20,6 +20,8 @@ export function ExportPanel() {
 
   return (
     <section className="exports">
+      <GreenFoldA3mExport protein={protein} greenfold={derived.greenfold} />
+      <CofoldingExportMenu accession={protein.accession} sequence={derived.minifiedSequence} />
       <button
         type="button"
         onClick={() =>
@@ -34,10 +36,8 @@ export function ExportPanel() {
           downloadText(`${protein.accession}_minified_residue_map.csv`, files.csv, "text/csv")
         }
       >
-        Residue map
+        Residue index mapping
       </button>
-      <GreenFoldA3mExport protein={protein} greenfold={derived.greenfold} />
-      <CofoldingExportMenu accession={protein.accession} sequence={derived.minifiedSequence} />
       <button
         type="button"
         onClick={() => void copyWithFeedback("sequence", derived.minifiedSequence)}
@@ -55,10 +55,6 @@ export function ExportPanel() {
       >
         {copied === "share" ? "Copied share link" : "Copy share link"}
       </button>
-      <p className="muted">
-        Co-folding inputs contain the minified protein as a single chain. Add interaction partners
-        or other entities required for your experiment.
-      </p>
     </section>
   );
 }

@@ -38,9 +38,7 @@ function CandidateList() {
 
 function UserEditList() {
   const workspace = useWorkspaceStore((state) => state.workspace);
-  const restoreEdit = useWorkspaceStore((state) => state.restoreEdit);
-  const acceptEdit = useWorkspaceStore((state) => state.acceptEdit);
-  const rejectEdit = useWorkspaceStore((state) => state.rejectEdit);
+  const removeEdit = useWorkspaceStore((state) => state.removeEdit);
   const setSelection = useWorkspaceStore((state) => state.setSelection);
   const setHoverRange = useInteractionStore((state) => state.setHoverRange);
   if (workspace.status !== "ready") return null;
@@ -78,21 +76,9 @@ function UserEditList() {
                 <p>Linker: {edit.insertedSequence}</p>
               )}
               <div className="row">
-                {edit.status === "pending" && (
-                  <>
-                    <button type="button" className="primary" onClick={() => acceptEdit(edit.id)}>
-                      Accept
-                    </button>
-                    <button type="button" className="ghost" onClick={() => rejectEdit(edit.id)}>
-                      Reject
-                    </button>
-                  </>
-                )}
-                {(edit.status === "applied" || edit.status === "rejected") && (
-                  <button type="button" className="ghost" onClick={() => restoreEdit(edit.id)}>
-                    Restore
-                  </button>
-                )}
+                <button type="button" className="ghost" onClick={() => removeEdit(edit.id)}>
+                  Remove edit
+                </button>
                 <button
                   type="button"
                   className="ghost"

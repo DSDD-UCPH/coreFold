@@ -121,6 +121,7 @@ type Store = {
   acceptEdit: (id: string) => void;
   rejectEdit: (id: string) => void;
   restoreEdit: (id: string) => void;
+  removeEdit: (id: string) => void;
   setLinker: (id: string, sequence: string) => void;
   commitBoundary: (id: string, start: number, end: number) => void;
   resetToProposal: (id: string, candidateId?: string) => void;
@@ -289,6 +290,22 @@ export const useWorkspaceStore = create<Store>((set, get) => ({
         }),
       }),
       "Restored region",
+    ),
+
+  removeEdit: (id) =>
+    mutateReady(
+      set,
+      get,
+      (state) => {
+        const remaining = state.edits.filter((edit) => edit.id !== id);
+        if (remaining.length === state.edits.length) return {};
+        return {
+          edits: remaining,
+          selectedCandidateId: undefined,
+          selection: undefined,
+        };
+      },
+      "Removed custom edit",
     ),
 
   setLinker: (id, sequence) => {

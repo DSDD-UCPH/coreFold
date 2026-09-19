@@ -45,24 +45,24 @@ export function GreenFoldA3mExport({
 
   return (
     <details className="export-group">
-      <summary>GreenFold A3M</summary>
+      <summary>Download MSA (greenFold)</summary>
       <p className="muted">{GREENFOLD_A3M_ATTRIBUTION}</p>
       <div className="menu-list" role="group" aria-label="GreenFold A3M downloads">
         <button
           type="button"
           className="ghost"
           disabled={busy !== null}
-          onClick={() => void download("paired")}
+          onClick={() => void download("unpaired")}
         >
-          {busy === "paired" ? "Downloading…" : "Download paired A3M"}
+          {busy === "unpaired" ? "Downloading…" : "Unpaired A3M"}
         </button>
         <button
           type="button"
           className="ghost"
           disabled={busy !== null}
-          onClick={() => void download("unpaired")}
+          onClick={() => void download("paired")}
         >
-          {busy === "unpaired" ? "Downloading…" : "Download unpaired A3M"}
+          {busy === "paired" ? "Downloading…" : "Paired A3M"}
         </button>
       </div>
       {error && (

@@ -6,6 +6,7 @@ import {
   exportHelixFoldJson,
   exportOpenFold2Fasta,
   exportOpenFold3Json,
+  exportOpenDdeJson,
   exportProtenixJson,
 } from "./cofolding";
 import { exportResidueMapCsv } from "./csv";
@@ -100,6 +101,18 @@ describe("exporters", () => {
     });
   });
 
+  it("writes an OpenDDE job JSON list", () => {
+    const json = JSON.parse(exportOpenDdeJson("P00519", sequence));
+    expect(json).toHaveLength(1);
+    expect(json[0].name).toBe("P00519_minified");
+    expect(json[0].modelSeeds).toEqual([1]);
+    expect(json[0].sequences[0].proteinChain).toEqual({
+      sequence,
+      count: 1,
+      id: ["A"],
+    });
+  });
+
   it("writes a HelixFold entity JSON", () => {
     const json = JSON.parse(exportHelixFoldJson("P00519", sequence));
     expect(json.entities).toEqual([{ type: "protein", sequence, count: 1 }]);
@@ -117,7 +130,7 @@ describe("GreenFold A3M download helpers", () => {
     expect(greenfoldA3mMutationPattern("P00519")).toBeUndefined();
     expect(greenfoldA3mMutationPattern("P00519[M1-N49del]")).toBe("P00519[M1-N49del]");
     expect(GREENFOLD_A3M_ATTRIBUTION).toBe(
-      "GreenFold provided the A3M Multiple Sequence Alignment file.",
+      "greenFold provides ready-to-use multiple sequence alignments for the entire human proteome, available in A3M and raw STO formats, including modifications. If you use greenFold, please cite our associated work.",
     );
   });
 

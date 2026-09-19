@@ -111,6 +111,7 @@ export {
   exportHelixFoldJson,
   exportOpenFold2Fasta,
   exportOpenFold3Json,
+  exportOpenDdeJson,
   exportProtenixJson,
   exportResidueMapCsv,
   formatGreenFoldFasta,

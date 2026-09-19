@@ -6,6 +6,8 @@ import { useWorkspaceStore, type LoadStage } from "./state/workspaceStore";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { ConstructSelector } from "./components/ConstructSelector";
 import { Header } from "./components/Header";
+import { StartPageTips } from "./components/StartPageTips";
+import { TipsDialog } from "./components/TipsDialog";
 import { BrandMark } from "./components/Brand";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { MetricsPanel } from "./components/MetricsPanel";
@@ -16,6 +18,7 @@ import { StructureViewer } from "./components/StructureViewer";
 import { Toast } from "./components/Toast";
 import { UnloadGuard } from "./components/UnloadGuard";
 import { WorkspaceLayout } from "./components/WorkspaceLayout";
+import { markTipsSeen } from "./state/tipsSeen";
 
 const LOAD_STAGES: LoadStage[] = [
   "Resolving UniProt entry",
@@ -30,6 +33,11 @@ export function App() {
   const load = useWorkspaceStore((state) => state.load);
   const [shareError, setShareError] = useState<string | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [tipsOpen, setTipsOpen] = useState(false);
+  const openTips = () => {
+    markTipsSeen();
+    setTipsOpen(true);
+  };
 
   useEffect(() => {
     try {
@@ -85,10 +93,11 @@ export function App() {
         <Header
           inspectorOpen={inspectorOpen}
           onToggleInspector={() => setInspectorOpen((open) => !open)}
+          onOpenTips={openTips}
         />
         {workspace.status === "ready" && <ConstructSelector />}
         {shareError && <div className="banner error">{shareError}</div>}
-        {workspace.status === "empty" && <EmptyState />}
+        {workspace.status === "empty" && <EmptyState onOpenTips={openTips} />}
         {workspace.status === "loading" && <LoadingState stage={workspace.stage} />}
         {workspace.status === "ambiguous" && <AmbiguityTable />}
         {workspace.status === "error" && <div className="banner error">{workspace.message}</div>}
@@ -117,13 +126,14 @@ export function App() {
       </div>
       <Toast />
       <ConfirmDialog />
+      {tipsOpen && <TipsDialog onClose={() => setTipsOpen(false)} />}
       <KeyboardShortcuts />
       <UnloadGuard />
     </>
   );
 }
 
-function EmptyState() {
+function EmptyState({ onOpenTips }: { onOpenTips: () => void }) {
   const load = useWorkspaceStore((state) => state.load);
   const [query, setQuery] = useState("");
   return (
@@ -166,6 +176,7 @@ function EmptyState() {
             </button>
           ))}
         </div>
+        <StartPageTips onOpenTips={onOpenTips} />
       </div>
     </section>
   );

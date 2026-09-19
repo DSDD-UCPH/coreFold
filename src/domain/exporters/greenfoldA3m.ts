@@ -3,7 +3,7 @@ import { HUMAN_TAXONOMY_ID, type ProteinRecord } from "../types";
 export const GREENFOLD_BASE_URL = "https://greenfold.dsdd.one";
 export const GREENFOLD_A3M_PROXY_PREFIX = "/greenfold-api";
 export const GREENFOLD_A3M_ATTRIBUTION =
-  "GreenFold provided the A3M Multiple Sequence Alignment file.";
+  "greenFold provides ready-to-use multiple sequence alignments for the entire human proteome, available in A3M and raw STO formats, including modifications. If you use greenFold, please cite our associated work.";
 
 export type GreenFoldA3mKind = "paired" | "unpaired";
 

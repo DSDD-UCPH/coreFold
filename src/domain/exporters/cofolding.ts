@@ -63,6 +63,24 @@ export function exportProtenixJson(accession: string, sequence: string): string 
   ]);
 }
 
+export function exportOpenDdeJson(accession: string, sequence: string): string {
+  return jsonFile([
+    {
+      name: `${accession}_minified`,
+      modelSeeds: [1],
+      sequences: [
+        {
+          proteinChain: {
+            sequence,
+            count: 1,
+            id: ["A"],
+          },
+        },
+      ],
+    },
+  ]);
+}
+
 export function exportHelixFoldJson(_accession: string, sequence: string): string {
   return jsonFile({
     entities: [
@@ -124,6 +142,13 @@ export const COFOLDING_EXPORTS: CofoldingExport[] = [
     mime: "application/json",
     filename: (accession) => `${accession}_minified_openfold3.json`,
     content: exportOpenFold3Json,
+  },
+  {
+    id: "opendde",
+    label: "OpenDDE",
+    mime: "application/json",
+    filename: (accession) => `${accession}_minified_opendde.json`,
+    content: exportOpenDdeJson,
   },
   {
     id: "protenix",

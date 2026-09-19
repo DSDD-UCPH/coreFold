@@ -934,7 +934,7 @@ button.brand-home:hover:not(:disabled) {
 }
 .empty-card,
 .loading-card {
-  width: min(36rem, 100%);
+  width: min(42rem, 100%);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -963,6 +963,41 @@ button.brand-home:hover:not(:disabled) {
 }
 .example-list button {
   font-family: var(--mono);
+}
+.start-tips {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.start-tips h2 {
+  margin: 0 0 0.55rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.start-tips p {
+  margin: 0 0 0.7rem;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.start-tips ul {
+  margin: 0 0 0.8rem;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.start-tips li {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.start-tips-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 1.25rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.83rem;
 }
 
 .stage-list {
@@ -1056,6 +1091,47 @@ button.brand-home:hover:not(:disabled) {
 }
 .modal .row {
   margin-top: 0.7rem;
+}
+.tips-modal {
+  max-width: 42rem;
+  max-height: min(86vh, 48rem);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.tips-modal-body {
+  overflow: auto;
+  padding: 1rem 1.15rem 0.55rem;
+}
+.tips-modal-body h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+.tips-modal-body p,
+.tips-modal-body li {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.tips-modal-body p {
+  margin: 0 0 0.85rem;
+}
+.tips-modal-body ul {
+  margin: 0;
+  padding: 0 0 0.35rem 1.15rem;
+  display: grid;
+  gap: 0.7rem;
+}
+.tips-modal-body a {
+  color: var(--accent);
+}
+.tips-modal .row {
+  margin: 0;
+  padding: 0.7rem 1.15rem 0.9rem;
+  border-top: 1px solid var(--line);
+  justify-content: flex-end;
+  background: var(--surface);
 }
 
 .popover {

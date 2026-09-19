@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { TIPS_SEEN_COOKIE } from "../src/state/tipsSeen";
 
 const CIF = `data_test
 loop_
@@ -99,13 +100,24 @@ test("scenario A: terminal trim is auto-applied", async ({ page }) => {
   await expect(page.getByText("1.00×").first()).toBeVisible();
   await page.getByRole("button", { name: "Redo" }).click();
   await page.getByRole("button", { name: "Export" }).click();
-  await expect(page.getByRole("button", { name: "Download FASTA" })).toBeVisible();
   await expect(page.getByText("Co-Folding methods")).toBeVisible();
-  await page.getByText("GreenFold A3M").click();
+  await page.getByText("Co-Folding methods").click();
   await expect(
-    page.getByText("GreenFold provided the A3M Multiple Sequence Alignment file."),
+    page.getByText(
+      "Co-folding inputs contain the minified protein as a single chain. Add interaction partners or other entities required for your experiment.",
+    ),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Download paired A3M" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "OpenDDE" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download FASTA" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Residue index mapping" })).toBeVisible();
+  await page.getByText("Download MSA (greenFold)").click();
+  await expect(
+    page.getByText(
+      "greenFold provides ready-to-use multiple sequence alignments for the entire human proteome, available in A3M and raw STO formats, including modifications. If you use greenFold, please cite our associated work.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unpaired A3M" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Paired A3M" })).toBeVisible();
 });
 
 test("scenario B: internal candidate requires accept", async ({ page }) => {
@@ -198,6 +210,19 @@ test("keyboard delete then undo restores the construct", async ({ page }) => {
   await expect(page.getByText("Custom edits")).toHaveCount(0);
 });
 
+test("custom edit card can be deleted", async ({ page }) => {
+  await loadTestProtein(page);
+  await page.getByRole("button", { name: "Go to residue" }).click();
+  await page.getByLabel("Selection start residue").fill("50");
+  await page.getByLabel("Selection end residue").fill("55");
+  await page.getByRole("button", { name: "Select range" }).click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Delete and add linker" }).click();
+  await expect(page.getByText("Custom edits")).toBeVisible();
+  await page.locator(".user-edits").getByRole("button", { name: "Remove edit" }).click();
+  await expect(page.getByText("Custom edits")).toHaveCount(0);
+});
+
 test("dragging an automatic proposal handle updates that card", async ({ page }) => {
   await loadTestProtein(page);
   const grip = page.getByRole("button", { name: "Deletion end 42" });
@@ -241,9 +266,9 @@ test("human proteins can download a GreenFold A3M", async ({ page }) => {
   });
   await loadTestProtein(page);
   await page.getByRole("button", { name: "Export" }).click();
-  await page.getByText("GreenFold A3M").click();
+  await page.getByText("Download MSA (greenFold)").click();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Download paired A3M" }).click();
+  await page.getByRole("button", { name: "Paired A3M" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("P00000_paired.a3m");
 });
@@ -293,4 +318,50 @@ test("highlight frames the focused candidate on the sequence", async ({ page }) 
   await loadTestProtein(page);
   await page.getByRole("button", { name: "Highlight" }).first().click();
   await expect(page.locator(".seq-marker.selection, .seq-marker.hover").first()).toBeVisible();
+});
+
+test("first visit shows the tips intro inline instead of a modal", async ({ page, context }) => {
+  await context.clearCookies();
+  await page.goto("/");
+  const dialog = page.getByRole("dialog", {
+    name: "coreFold: Protein minification for co-folding",
+  });
+  await expect(dialog).toHaveCount(0);
+  const intro = page.getByRole("region", { name: "Before you start" });
+  await expect(intro).toBeVisible();
+  await expect(intro.getByText("Identify the region of interest first.")).toBeVisible();
+
+  await intro.getByRole("button", { name: "Read all tips" }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("Check the retained structure.")).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(dialog).toHaveCount(0);
+
+  expect(
+    (await context.cookies()).some(
+      (cookie) => cookie.name === TIPS_SEEN_COOKIE && cookie.value === "1",
+    ),
+  ).toBe(true);
+});
+
+test("returning visitors get the compact tips hint", async ({ page, context }) => {
+  await context.clearCookies();
+  await page.goto("/");
+  await expect(page.getByRole("region", { name: "Before you start" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Before you start" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Read the tips" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "coreFold: Protein minification for co-folding" }),
+  ).toBeVisible();
+});
+
+test("Tips button opens the guidance dialog", async ({ page }) => {
+  await page.goto("/");
+  const dialog = page.getByRole("dialog", {
+    name: "coreFold: Protein minification for co-folding",
+  });
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "Tips" }).click();
+  await expect(dialog).toBeVisible();
 });

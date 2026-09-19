@@ -20,9 +20,11 @@ import { Brand } from "./Brand";
 export function Header({
   inspectorOpen,
   onToggleInspector,
+  onOpenTips,
 }: {
   inspectorOpen: boolean;
   onToggleInspector: () => void;
+  onOpenTips: () => void;
 }) {
   const workspace = useWorkspaceStore((state) => state.workspace);
   const load = useWorkspaceStore((state) => state.load);
@@ -237,6 +239,9 @@ export function Header({
             <AdvancedSettings alwaysOpen />
           </Popover>
         </div>
+        <button type="button" className="ghost" aria-haspopup="dialog" onClick={onOpenTips}>
+          Tips
+        </button>
       </div>
     </header>
   );
@@ -257,6 +262,8 @@ function ExportMenu() {
   };
   return (
     <div className="menu-list">
+      <GreenFoldA3mExport protein={protein} greenfold={derived.greenfold} />
+      <CofoldingExportMenu accession={protein.accession} sequence={derived.minifiedSequence} />
       <button
         type="button"
         className="ghost"
@@ -273,10 +280,8 @@ function ExportMenu() {
           downloadText(`${protein.accession}_minified_residue_map.csv`, files.csv, "text/csv")
         }
       >
-        Residue map
+        Residue index mapping
       </button>
-      <GreenFoldA3mExport protein={protein} greenfold={derived.greenfold} />
-      <CofoldingExportMenu accession={protein.accession} sequence={derived.minifiedSequence} />
       <button
         type="button"
         className="ghost"
@@ -293,10 +298,6 @@ function ExportMenu() {
       >
         {copied === "share" ? "Copied share link" : "Copy share link"}
       </button>
-      <p className="muted">
-        Co-folding inputs contain the minified protein as a single chain. Add interaction partners
-        or other entities required for your experiment.
-      </p>
     </div>
   );
 }
