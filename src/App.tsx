@@ -18,7 +18,6 @@ import { StructureViewer } from "./components/StructureViewer";
 import { Toast } from "./components/Toast";
 import { UnloadGuard } from "./components/UnloadGuard";
 import { WorkspaceLayout } from "./components/WorkspaceLayout";
-import { markTipsSeen } from "./state/tipsSeen";
 
 const LOAD_STAGES: LoadStage[] = [
   "Resolving UniProt entry",
@@ -34,10 +33,7 @@ export function App() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [tipsOpen, setTipsOpen] = useState(false);
-  const openTips = () => {
-    markTipsSeen();
-    setTipsOpen(true);
-  };
+  const openTips = () => setTipsOpen(true);
 
   useEffect(() => {
     try {

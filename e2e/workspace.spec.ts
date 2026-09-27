@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { TIPS_SEEN_COOKIE } from "../src/state/tipsSeen";
 
 const CIF = `data_test
 loop_
@@ -194,7 +193,7 @@ test("keyboard delete then undo restores the construct", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(page.getByText("Selected 50–55")).toBeVisible();
   await expect(page.locator(".seq-cell.selected")).toHaveCount(6);
-  await page.getByRole("button", { name: "Clear" }).click();
+  await page.getByRole("button", { name: "Clear selection" }).click();
   await expect(page.getByText("Selected 50–55")).toHaveCount(0);
   await expect(page.locator(".seq-cell.selected")).toHaveCount(0);
 
@@ -320,8 +319,7 @@ test("highlight frames the focused candidate on the sequence", async ({ page }) 
   await expect(page.locator(".seq-marker.selection, .seq-marker.hover").first()).toBeVisible();
 });
 
-test("first visit shows the tips intro inline instead of a modal", async ({ page, context }) => {
-  await context.clearCookies();
+test("start page shows the tips intro inline instead of a modal", async ({ page }) => {
   await page.goto("/");
   const dialog = page.getByRole("dialog", {
     name: "coreFold: Protein minification for co-folding",
@@ -337,23 +335,8 @@ test("first visit shows the tips intro inline instead of a modal", async ({ page
   await page.getByRole("button", { name: "Close" }).click();
   await expect(dialog).toHaveCount(0);
 
-  expect(
-    (await context.cookies()).some(
-      (cookie) => cookie.name === TIPS_SEEN_COOKIE && cookie.value === "1",
-    ),
-  ).toBe(true);
-});
-
-test("returning visitors get the compact tips hint", async ({ page, context }) => {
-  await context.clearCookies();
-  await page.goto("/");
-  await expect(page.getByRole("region", { name: "Before you start" })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("region", { name: "Before you start" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Read the tips" }).click();
-  await expect(
-    page.getByRole("dialog", { name: "coreFold: Protein minification for co-folding" }),
-  ).toBeVisible();
+  await expect(page.getByRole("region", { name: "Before you start" })).toBeVisible();
 });
 
 test("Tips button opens the guidance dialog", async ({ page }) => {
@@ -362,6 +345,6 @@ test("Tips button opens the guidance dialog", async ({ page }) => {
     name: "coreFold: Protein minification for co-folding",
   });
   await expect(dialog).toHaveCount(0);
-  await page.getByRole("button", { name: "Tips" }).click();
+  await page.getByRole("button", { name: "Tips", exact: true }).click();
   await expect(dialog).toBeVisible();
 });

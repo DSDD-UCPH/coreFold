@@ -1,7 +1,19 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { classifyCandidate, clampIntervalToConstruct, residueInConstruct } from "../domain/candidates";
+import {
+  memo,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import {
+  classifyCandidate,
+  clampIntervalToConstruct,
+  residueInConstruct,
+} from "../domain/candidates";
 import { computeInternalGeometry } from "../domain/proposal";
-import { isGlycineSerineLinker } from "../domain/linkers";
 import { FEATURE_TYPE_LABEL, type UniProtFeature } from "../domain/types";
 import { useInteractionStore } from "../state/interactionStore";
 import { useWorkspaceStore, type ReadyState } from "../state/workspaceStore";
@@ -12,6 +24,8 @@ const CELL = 14;
 const GRIP = 16;
 const GAP = 6;
 const BLOCK = 10;
+const TOOLBAR_GAP = 8;
+const TOOLBAR_FALLBACK_SIZE = { width: 360, height: 44 };
 
 type SeqCell = {
   key: string;
@@ -41,23 +55,26 @@ export function SequenceViewer() {
   const resizeConstruct = useWorkspaceStore((state) => state.resizeConstruct);
   const setSelection = useWorkspaceStore((state) => state.setSelection);
   const addDeletion = useWorkspaceStore((state) => state.addDeletion);
-  const addInsertion = useWorkspaceStore((state) => state.addInsertion);
   const setDragPreview = useInteractionStore((state) => state.setDragPreview);
   const setHoverRange = useInteractionStore((state) => state.setHoverRange);
   const hoverRange = useInteractionStore((state) => state.hoverRange);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const readyRef = useRef<ReadyState | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const [cols, setCols] = useState(50);
   const [hover, setHover] = useState<{ x: number; y: number; text: string } | null>(null);
   const [readout, setReadout] = useState<{ x: number; y: number; text: string } | null>(null);
-  const [linker, setLinker] = useState("");
   const [goTo, setGoTo] = useState(false);
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const [draftConstruct, setDraftConstruct] = useState<{ start: number; end: number } | null>(null);
-  const [draftEdit, setDraftEdit] = useState<{ id: string; start: number; end: number } | null>(null);
+  const [draftEdit, setDraftEdit] = useState<{ id: string; start: number; end: number } | null>(
+    null,
+  );
   const [collapsed, setCollapsed] = useState(false);
+  const [rangeDragging, setRangeDragging] = useState(false);
+  const [toolbarPos, setToolbarPos] = useState<{ left: number; top: number } | null>(null);
   const previewRaf = useRef(0);
   const ready = workspace.status === "ready" ? workspace : null;
   readyRef.current = ready;
@@ -82,10 +99,7 @@ export function SequenceViewer() {
 
   const sequence = ready?.protein.sequence;
   const plddt = ready?.structure.plddt;
-  const cells = useMemo(
-    () => (ready ? buildCells(ready) : []),
-    [accession, sequence, plddt],
-  );
+  const cells = useMemo(() => (ready ? buildCells(ready) : []), [accession, sequence, plddt]);
   const rows = useMemo(() => chunk(cells, cols), [cells, cols]);
 
   useEffect(() => {
@@ -102,6 +116,48 @@ export function SequenceViewer() {
     setRangeStart(String(selectionStart));
     setRangeEnd(String(ready.selection.end));
   }, [selectionStart, ready?.selection?.end]);
+
+  const selectionEnd = ready?.selection?.end;
+  const showSelectionToolbar =
+    !collapsed &&
+    !rangeDragging &&
+    ready?.selection !== undefined &&
+    (ready.selection.source === "sequence" || ready.selection.source === "structure");
+
+  useLayoutEffect(() => {
+    if (!showSelectionToolbar || selectionStart === undefined || selectionEnd === undefined) {
+      setToolbarPos(null);
+      return;
+    }
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+
+    const measure = () => {
+      const bar = toolbarRef.current;
+      const size = bar
+        ? { width: bar.offsetWidth, height: bar.offsetHeight }
+        : TOOLBAR_FALLBACK_SIZE;
+      const next = selectionToolbarPosition(wrap, selectionStart, selectionEnd, size);
+      setToolbarPos((prev) => {
+        if (!next) return null;
+        if (prev && prev.left === next.left && prev.top === next.top) return prev;
+        return next;
+      });
+    };
+
+    measure();
+    wrap.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("resize", measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(wrap);
+    const bar = toolbarRef.current;
+    if (bar) observer.observe(bar);
+    return () => {
+      wrap.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", measure);
+      observer.disconnect();
+    };
+  }, [showSelectionToolbar, selectionStart, selectionEnd, selectionAt, cols]);
 
   useEffect(() => {
     const publishPreview = (preview: Parameters<typeof setDragPreview>[0]) => {
@@ -197,6 +253,7 @@ export function SequenceViewer() {
       const current = readyRef.current;
       const drag = dragRef.current;
       dragRef.current = null;
+      setRangeDragging(false);
       setReadout(null);
       if (previewRaf.current) cancelAnimationFrame(previewRaf.current);
       previewRaf.current = 0;
@@ -236,7 +293,7 @@ export function SequenceViewer() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [commitBoundary, resizeConstruct, setSelection, setDragPreview]);
+  }, [commitBoundary, resizeConstruct, setSelection, setDragPreview, setRangeDragging]);
 
   if (!ready) return null;
 
@@ -262,19 +319,19 @@ export function SequenceViewer() {
         : "Delete and add linker";
   const pendingConstruct =
     pendingAction?.type === "construct" ? pendingAction.construct : undefined;
-  const viewConstruct = draftConstruct ?? pendingConstruct ?? {
-    start: ready.construct.start,
-    end: ready.construct.end,
-  };
+  const viewConstruct = draftConstruct ??
+    pendingConstruct ?? {
+      start: ready.construct.start,
+      end: ready.construct.end,
+    };
   const editSpans = visibleEdits(ready, draftEdit);
   const canDeleteSelection =
     selection !== undefined &&
     rangeClass !== "entire_construct" &&
     clampIntervalToConstruct(selection, ready.construct) !== undefined &&
-    Array.from(
-      { length: selection.end - selection.start + 1 },
-      (_, i) => selection.start + i,
-    ).some((position) => !residueFaded(position, ready.construct, editSpans));
+    Array.from({ length: selection.end - selection.start + 1 }, (_, i) => selection.start + i).some(
+      (position) => !residueFaded(position, ready.construct, editSpans),
+    );
 
   const onCellDown = (event: ReactPointerEvent<HTMLDivElement>, cell: SeqCell) => {
     event.preventDefault();
@@ -285,10 +342,7 @@ export function SequenceViewer() {
           ? ready.selection.end
           : ready.selection.start
         : cell.canonical;
-    const originClamped = Math.min(
-      ready.construct.end,
-      Math.max(ready.construct.start, origin),
-    );
+    const originClamped = Math.min(ready.construct.end, Math.max(ready.construct.start, origin));
     const edge = constructEdgeForRangeOrigin(originClamped, ready.construct, event.shiftKey);
     dragRef.current = {
       kind: "range",
@@ -296,6 +350,7 @@ export function SequenceViewer() {
       moved: event.shiftKey,
       shift: event.shiftKey,
     };
+    setRangeDragging(true);
     if (edge) return;
     setSelection({
       start: Math.min(originClamped, cell.canonical),
@@ -526,37 +581,29 @@ export function SequenceViewer() {
           );
         })}
       </div>
-      {selection && (selection.source === "sequence" || selection.source === "structure") && (
-        <div className="seq-action-bar" onPointerDown={(event) => event.stopPropagation()}>
+      {showSelectionToolbar && selection && (
+        <div
+          ref={toolbarRef}
+          className="seq-selection-toolbar"
+          role="toolbar"
+          aria-label="Selection actions"
+          style={
+            toolbarPos
+              ? { left: toolbarPos.left, top: toolbarPos.top }
+              : { visibility: "hidden", left: 0, top: 0 }
+          }
+          onPointerDown={(event) => event.stopPropagation()}
+        >
           <span>
             Selected {selection.start}–{selection.end} ({selection.end - selection.start + 1} aa)
           </span>
           <button
             type="button"
             className="primary"
-            onClick={() => addDeletion(selection.start, selection.end, linker || undefined)}
+            onClick={() => addDeletion(selection.start, selection.end)}
             disabled={!canDeleteSelection}
           >
             {deleteLabel}
-          </button>
-          <label>
-            Linker
-            <input
-              value={linker}
-              onChange={(event) =>
-                setLinker(event.target.value.toUpperCase().replace(/[^GS]/g, ""))
-              }
-              placeholder="GS only"
-              aria-label="Custom linker or insertion sequence, G and S only"
-            />
-          </label>
-          <button
-            type="button"
-            className="ghost"
-            disabled={!isGlycineSerineLinker(linker) || linker.length === 0}
-            onClick={() => addInsertion(selection.end, linker)}
-          >
-            Insert linker after {selection.end}
           </button>
           <button
             type="button"
@@ -570,7 +617,7 @@ export function SequenceViewer() {
               setHoverRange(undefined);
             }}
           >
-            Clear
+            Clear selection
           </button>
         </div>
       )}
@@ -1015,8 +1062,11 @@ function visibleEdits(
     if (live) {
       const interval = { start, end };
       if (classifyCandidate(interval, workspace.construct) === "internal") {
-        insertion = computeInternalGeometry(interval, workspace.construct, workspace.structure.ca)
-          ?.recommendedLinker;
+        insertion = computeInternalGeometry(
+          interval,
+          workspace.construct,
+          workspace.structure.ca,
+        )?.recommendedLinker;
       }
     } else if (edit.type === "replacement" && edit.insertedSequence.length > 0) {
       insertion = edit.insertedSequence;
@@ -1065,6 +1115,47 @@ function scrollWithin(wrap: HTMLElement, node: HTMLElement) {
   const nodeRect = node.getBoundingClientRect();
   if (nodeRect.top >= wrapRect.top && nodeRect.bottom <= wrapRect.bottom) return;
   wrap.scrollTop += nodeRect.top - wrapRect.top - wrap.clientHeight / 2 + nodeRect.height / 2;
+}
+
+function selectionToolbarPosition(
+  wrap: HTMLElement,
+  start: number,
+  end: number,
+  size: { width: number; height: number },
+): { left: number; top: number } | undefined {
+  const startNode = wrap.querySelector(`[data-canonical="${start}"]`);
+  const endNode = wrap.querySelector(`[data-canonical="${end}"]`);
+  if (!(startNode instanceof HTMLElement) || !(endNode instanceof HTMLElement)) return undefined;
+  const wrapRect = wrap.getBoundingClientRect();
+  const startRect = startNode.getBoundingClientRect();
+  const endRect = endNode.getBoundingClientRect();
+  const selTop = Math.min(startRect.top, endRect.top);
+  const selBottom = Math.max(startRect.bottom, endRect.bottom);
+  let top: number;
+  if (selBottom < wrapRect.top) {
+    top = wrapRect.top + TOOLBAR_GAP;
+  } else if (selTop > wrapRect.bottom) {
+    top = wrapRect.bottom - size.height - TOOLBAR_GAP;
+  } else {
+    top = endRect.bottom + TOOLBAR_GAP;
+    if (top + size.height > wrapRect.bottom - TOOLBAR_GAP) {
+      top = selTop - size.height - TOOLBAR_GAP;
+    }
+    if (top < wrapRect.top + TOOLBAR_GAP) {
+      top = wrapRect.top + TOOLBAR_GAP;
+    }
+    if (top + size.height > wrapRect.bottom - TOOLBAR_GAP) {
+      top = Math.max(wrapRect.top + TOOLBAR_GAP, wrapRect.bottom - size.height - TOOLBAR_GAP);
+    }
+  }
+  let left = endRect.left;
+  if (left + size.width > wrapRect.right - TOOLBAR_GAP) {
+    left = wrapRect.right - size.width - TOOLBAR_GAP;
+  }
+  if (left < wrapRect.left + TOOLBAR_GAP) {
+    left = wrapRect.left + TOOLBAR_GAP;
+  }
+  return { left: Math.round(left), top: Math.round(top) };
 }
 
 function trackMarkAt(
