@@ -1,7 +1,6 @@
 import { HUMAN_TAXONOMY_ID, type ProteinRecord } from "../types";
 
 export const GREENFOLD_BASE_URL = "https://greenfold.dsdd.one";
-export const GREENFOLD_A3M_PROXY_PREFIX = "/greenfold-api";
 export const GREENFOLD_A3M_ATTRIBUTION =
   "greenFold provides ready-to-use multiple sequence alignments for the entire human proteome, available in A3M and raw STO formats, including modifications. If you use greenFold, please cite our associated work.";
 
@@ -21,10 +20,6 @@ export function greenfoldA3mPath(accession: string, kind: GreenFoldA3mKind): str
 
 export function greenfoldA3mUrl(accession: string, kind: GreenFoldA3mKind): string {
   return `${GREENFOLD_BASE_URL}${greenfoldA3mPath(accession, kind)}`;
-}
-
-export function greenfoldA3mProxyPath(accession: string, kind: GreenFoldA3mKind): string {
-  return `${GREENFOLD_A3M_PROXY_PREFIX}${greenfoldA3mPath(accession, kind)}`;
 }
 
 export function greenfoldDownloadMsaUrl(accession: string): string {

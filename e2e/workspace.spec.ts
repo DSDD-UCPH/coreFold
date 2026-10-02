@@ -253,7 +253,7 @@ test("loading another protein confirms when edits exist", async ({ page }) => {
 });
 
 test("human proteins can download a GreenFold A3M", async ({ page }) => {
-  await page.route("**/greenfold-api/v1/download_a3m/**", async (route) => {
+  await page.route("https://greenfold.dsdd.one/v1/download_a3m/**", async (route) => {
     expect(route.request().headers()["mutation-pattern"]).toMatch(/^P00000\[/);
     expect(route.request().url()).toContain("kind=paired");
     await route.fulfill({
@@ -267,7 +267,7 @@ test("human proteins can download a GreenFold A3M", async ({ page }) => {
   await page.getByRole("button", { name: "Export" }).click();
   await page.getByText("Download MSA (greenFold)").click();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Paired A3M" }).click();
+  await page.getByRole("button", { name: "Paired A3M", exact: true }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("P00000_paired.a3m");
 });
