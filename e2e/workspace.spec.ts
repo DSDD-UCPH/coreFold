@@ -115,8 +115,8 @@ test("scenario A: terminal trim is auto-applied", async ({ page }) => {
       "greenFold provides ready-to-use multiple sequence alignments for the entire human proteome, available in A3M and raw STO formats, including modifications. If you use greenFold, please cite our associated work.",
     ),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Unpaired A3M" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Paired A3M" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unpaired A3M", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Paired A3M", exact: true })).toBeVisible();
 });
 
 test("scenario B: internal candidate requires accept", async ({ page }) => {
