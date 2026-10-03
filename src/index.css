@@ -209,6 +209,16 @@ button.brand-home:hover:not(:disabled) {
   letter-spacing: -0.03em;
   line-height: 1;
 }
+.credit {
+  margin: 0.35rem 0 0;
+  max-width: 28rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.credit a {
+  color: var(--accent);
+}
 .brand-copy {
   display: flex;
   flex-direction: column;

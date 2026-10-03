@@ -137,7 +137,16 @@ function EmptyState({ onOpenTips }: { onOpenTips: () => void }) {
       <div className="empty-card">
         <div className="empty-brand">
           <BrandMark className="empty-logo" />
-          <strong className="empty-name">{APP_NAME}</strong>
+          <div>
+            <strong className="empty-name">{APP_NAME}</strong>
+            <p className="credit">
+              Developed by the{" "}
+              <a href="https://dsdd.one" target="_blank" rel="noopener noreferrer">
+                Data Science for Drug Design
+              </a>{" "}
+              research group at the University of Copenhagen.
+            </p>
+          </div>
         </div>
         <h1>Rational protein minification for scalable co-folding</h1>
         <p>
