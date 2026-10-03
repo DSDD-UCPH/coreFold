@@ -20,7 +20,7 @@ export function MetricsPanel() {
   const { derived } = workspace;
   const previewConstruct = dragPreview?.construct;
   const previewEdit = dragPreview?.edit;
-  let originalLength = derived.referenceLength;
+  const originalLength = derived.referenceLength;
   let minifiedLength = derived.minifiedLength;
   if (previewConstruct) {
     if (workspace.construct.kind === "full_length") {

@@ -81,7 +81,9 @@ export function SequenceViewer() {
   const accession = ready?.protein.accession;
   const selectionSource = ready?.selection?.source;
   const selectionStart = ready?.selection?.start;
+  const selectionEnd = ready?.selection?.end;
   const selectionAt = ready?.selection?.at;
+  const hasSelection = selectionStart !== undefined && selectionEnd !== undefined;
 
   useEffect(() => {
     const node = wrapRef.current;
@@ -99,25 +101,27 @@ export function SequenceViewer() {
 
   const sequence = ready?.protein.sequence;
   const plddt = ready?.structure.plddt;
-  const cells = useMemo(() => (ready ? buildCells(ready) : []), [accession, sequence, plddt]);
+  const cells = useMemo(
+    () => (sequence && plddt ? buildCells(sequence, plddt) : []),
+    [sequence, plddt],
+  );
   const rows = useMemo(() => chunk(cells, cols), [cells, cols]);
 
   useEffect(() => {
-    if (!ready?.selection || selectionSource === "sequence") return;
+    if (!hasSelection || selectionSource === "sequence") return;
     const wrap = wrapRef.current;
     const node = wrap?.querySelector(`[data-canonical="${selectionStart}"]`);
     if (wrap instanceof HTMLElement && node instanceof HTMLElement) {
       scrollWithin(wrap, node);
     }
-  }, [selectionSource, selectionStart, ready?.selection?.end, selectionAt]);
+  }, [hasSelection, selectionSource, selectionStart, selectionEnd, selectionAt]);
 
   useEffect(() => {
-    if (selectionStart === undefined || ready?.selection?.end === undefined) return;
+    if (selectionStart === undefined || selectionEnd === undefined) return;
     setRangeStart(String(selectionStart));
-    setRangeEnd(String(ready.selection.end));
-  }, [selectionStart, ready?.selection?.end]);
+    setRangeEnd(String(selectionEnd));
+  }, [selectionStart, selectionEnd]);
 
-  const selectionEnd = ready?.selection?.end;
   const showSelectionToolbar =
     !collapsed &&
     !rangeDragging &&
@@ -1212,12 +1216,12 @@ function readoutText(start: number, end: number, originalStart: number, original
   return `${start}–${end} · ${length} aa (${signed})`;
 }
 
-function buildCells(workspace: ReadyState): SeqCell[] {
-  return workspace.protein.sequence.split("").map((letter, index) => ({
+function buildCells(sequence: string, plddt: number[]): SeqCell[] {
+  return sequence.split("").map((letter, index) => ({
     key: `aa-${index + 1}`,
     letter,
     canonical: index + 1,
-    plddt: workspace.structure.plddt[index],
+    plddt: plddt[index],
   }));
 }
 

@@ -37,6 +37,8 @@ export function StructureViewer() {
   const selStart = ready?.selection?.start;
   const selEnd = ready?.selection?.end;
   const selAt = ready?.selection?.at;
+  const hoverStart = hoverRange?.start;
+  const hoverEnd = hoverRange?.end;
   const previewKey = dragPreview
     ? `${dragPreview.construct?.start ?? ""}-${dragPreview.construct?.end ?? ""}:${dragPreview.edit?.id ?? ""}:${dragPreview.edit?.start ?? ""}-${dragPreview.edit?.end ?? ""}`
     : "";
@@ -232,16 +234,17 @@ export function StructureViewer() {
     if (!plugin) return;
     const current = useWorkspaceStore.getState().workspace;
     const inProtein =
-      hoverRange &&
+      hoverStart !== undefined &&
+      hoverEnd !== undefined &&
       current.status === "ready" &&
-      hoverRange.end >= 1 &&
-      hoverRange.start <= current.protein.length;
+      hoverEnd >= 1 &&
+      hoverStart <= current.protein.length;
     if (!inProtein) {
       plugin.managers.interactivity.lociHighlights.clearHighlights();
       return;
     }
-    void hoverResidues(plugin, hoverRange.start, hoverRange.end);
-  }, [hoverRange?.start, hoverRange?.end, constructKey]);
+    void hoverResidues(plugin, hoverStart, hoverEnd);
+  }, [hoverStart, hoverEnd, constructKey]);
 
   if (!ready) return null;
 
